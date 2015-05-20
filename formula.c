@@ -18,7 +18,7 @@ void main()
 	int homogeneousResolve(int s, int n, double **array, double **result);
 
 	//void printfIntArray(int s, int n, int ** array);
-	//int* seekarray(int n,double *temp);
+	//int* getPrimary(int n,double *temp);
 
 	//输入说明	
 	printf("输入说明:行数代表S个线性方程,N代表未知数及常数项.\n");
@@ -154,21 +154,147 @@ void primaryRowChange(int s, int n, double **array)
 int homogeneousResolve(int s, int n, double **array, double **result)
 {
 	int i,j,k,l,o,p,flag;
-	int r=s;//秩rank
+	int r;//秩rank
 	int m;//自由元个数
 	int f;//最后一个非零行首元的位置
 	int sum1=0,sum2=0;
 	double *temp = (double*)malloc(n*sizeof(double));//临时行指针
-	int **resultArray;//存储矩阵首元位置及非零元个数
-	double **resultSolve;//计算基础解系
+	int **matrixPrimary;//存储矩阵首元位置及非零元个数
+	double **matrixCalc;//计算基础解系
 	double undefined=-999;//标志位
 	int *freeElement;//自由元位置
-	double **resultTemp;
+	double **matrixTemp;
 	
+	//声明函数
 	void printfDoubleArray(int s, int n, double **array);
 	void printfIntArray(int s, int n, int **array);
-	int* seekArray(int n, double *temp);
+	int* getPrimary(int n, double *temp);
+	int getRank(int s, int n, double **array)
 
+	//秩rank
+	r = getRank(s,n,array);
+	
+	//判断解的情况
+	m=n-1-r;
+	matrixPrimary=(int**)malloc(r*sizeof(int*));
+	matrixCalc=(double**)malloc(r*sizeof(double*));
+	freeElement=(int*)malloc(m*sizeof(int));
+
+	if(m<0)
+		return -1;//无解
+	else if(m==0)
+		return 0;//只有零解
+	else
+	{
+		for(i=0;i<r;i++)
+		{
+			//初始化
+			matrixCalc[i]=(double*)malloc((n-1)*sizeof(double));
+			*(*(matrixCalc+i)+n-1)=1;
+			for(j=0;j<n-1;j++)
+			{
+				*(*(matrixCalc+i)+j)=undefined;
+			}
+			temp=array[i];
+			matrixPrimary[i]=getPrimary(n-1,temp);
+		}		
+		printfDoubleArray(r,n,matrixCalc);
+		//打印矩阵信息
+		printfIntArray(r,2,matrixPrimary);
+		
+		j=-1;//默认没有
+		for(k=r-1;k>=0;k--)//查找自由元，及位置为0的
+		{
+			if(matrixPrimary[k][1]==1)//说明第k行只有一个变量，它的解一定为0
+			{
+				j=matrixPrimary[k][0];
+				for(l=0;l<r;l++)
+					matrixCalc[l][j]=0;
+			}
+			else if(n-1-matrixPrimary[k][0]>m)
+			{
+				o=matrixPrimary[k][0];//当前行的首元位置
+				p=0;//次数
+				for(l=n-2;l>=o;l--)//从后向前查找自由元位置 ,共循环m次
+				{
+					if(l==j)
+						continue;
+					freeElement[p++]=l;
+					if(p==m)//说明已经找到 m个自由元
+						break;
+				}
+			}
+		}
+		//打印自由元位置	
+		printf("%d,%d\n",freeElement[0],freeElement[1]);	
+		//计算基础解系
+		//return 1;
+		for(k=0;k<m;k++)
+		{
+			matrixTemp=(double**)malloc(r*sizeof(double*));
+			//复制数组
+			for(l=0;l<r;l++)
+			{
+				temp =(double*)malloc(n*sizeof(double));
+				for(o=0;o<n;o++)
+					*(temp+o)=*(*(matrixCalc+l)+o);
+				matrixTemp[l]=temp;
+			}
+
+			//设置自由为0或1
+			for(l=0;l<r;l++)
+			{
+				matrixTemp[l][freeElement[k]]=1;//自由元为1
+				for(o=0;o<m;o++)
+				{
+					if(o!=k)
+						matrixTemp[l][freeElement[o]]=0;//自由元为0
+				}
+
+			}
+			printfDoubleArray(r,n,matrixTemp);
+
+			//计算
+			for(l=r-1;l>=0;l--)
+			{
+				for(o=matrixPrimary[l][0];o<n;o++)
+				{
+					if(matrixTemp[l][o]==undefined)//如果等于标志位，它可能是未知变量
+					{
+						sum1=sum2=0;
+						for(p=matrixPrimary[l][0];p<n;p++)
+						{
+							if(p==n-1)
+							{
+								sum1=array[l][p]*matrixTemp[l][p];
+							}
+							else if(p!=o)
+							{
+								sum2+=array[l][p]*matrixTemp[l][p];
+							}
+						}
+
+						for(p=0;p<r;p++)
+							matrixTemp[p][o]=(sum1-sum2)/array[l][o];
+
+						break;
+					}
+				}
+			}
+			result[k]=matrixTemp[0];
+			printfDoubleArray(r,n,matrixTemp);
+		}
+
+		return m;
+	}
+}
+
+
+//计算矩阵的秩
+int getRank(int s, int n, double **array)
+{
+	int flag;
+	int i,j,r=s;
 	//判断非零行个数
 	for(i=0;i<s;i++)
 	{
@@ -188,123 +314,11 @@ int homogeneousResolve(int s, int n, double **array, double **result)
 			break;
 		}
 	}
-	//判断解的情况
-	m=n-1-r;
-	resultArray=(int**)malloc(r*sizeof(int*));
-	resultSolve=(double**)malloc(r*sizeof(double*));
-	freeElement=(int*)malloc(m*sizeof(int));
-
-	if(m<0)
-		return -1;//无解
-	else if(m==0)
-		return 0;//只有零解
-	else
-	{
-		for(i=0;i<r;i++)
-		{
-			//初始化
-			resultSolve[i]=(double*)malloc((n-1)*sizeof(double));
-			*(*(resultSolve+i)+n-1)=1;
-			for(j=0;j<n-1;j++)
-			{
-				*(*(resultSolve+i)+j)=undefined;
-			}
-			temp=array[i];
-			resultArray[i]=seekArray(n-1,temp);
-		}		
-		printfDoubleArray(r,n,resultSolve);
-		//打印矩阵信息
-		printfIntArray(r,2,resultArray);
-		
-		j=-1;//默认没有
-		for(k=r-1;k>=0;k--)//查找自由元，及位置为0的
-		{
-			if(resultArray[k][1]==1)//说明第k行只有一个变量，它的解一定为0
-			{
-				j=resultArray[k][0];
-				for(l=0;l<r;l++)
-					resultSolve[l][j]=0;
-			}
-			else if(n-1-resultArray[k][0]>m)
-			{
-				o=resultArray[k][0];//当前行的首元位置
-				p=0;//次数
-				for(l=n-2;l>=o;l--)//从后向前查找自由元位置 ,共循环m次
-				{
-					if(l==j)
-						continue;
-					freeElement[p++]=l;
-					if(p==m)//说明已经找到 m个自由元
-						break;
-				}
-			}
-		}
-		//打印自由元位置	
-		printf("%d,%d\n",freeElement[0],freeElement[1]);	
-		//计算基础解系
-		//return 1;
-		for(k=0;k<m;k++)
-		{
-			resultTemp=(double**)malloc(r*sizeof(double*));
-			//复制数组
-			for(l=0;l<r;l++)
-			{
-				temp =(double*)malloc(n*sizeof(double));
-				for(o=0;o<n;o++)
-					*(temp+o)=*(*(resultSolve+l)+o);
-				resultTemp[l]=temp;
-			}
-
-			//设置自由为0或1
-			for(l=0;l<r;l++)
-			{
-				resultTemp[l][freeElement[k]]=1;//自由元为1
-				for(o=0;o<m;o++)
-				{
-					if(o!=k)
-						resultTemp[l][freeElement[o]]=0;//自由元为0
-				}
-
-			}
-			printfDoubleArray(r,n,resultTemp);
-
-			//计算
-			for(l=r-1;l>=0;l--)
-			{
-				for(o=resultArray[l][0];o<n;o++)
-				{
-					if(resultTemp[l][o]==undefined)//如果等于标志位，它可能是未知变量
-					{
-						sum1=sum2=0;
-						for(p=resultArray[l][0];p<n;p++)
-						{
-							if(p==n-1)
-							{
-								sum1=array[l][p]*resultTemp[l][p];
-							}
-							else if(p!=o)
-							{
-								sum2+=array[l][p]*resultTemp[l][p];
-							}
-						}
-
-						for(p=0;p<r;p++)
-							resultTemp[p][o]=(sum1-sum2)/array[l][o];
-
-						break;
-					}
-				}
-			}
-			result[k]=resultTemp[0];
-			printfDoubleArray(r,n,resultTemp);
-		}
-
-		return m;
-	}
+	return r;
 }
 
 //查找某行非零个数及首元位置
-int* seekArray(int n , double *temp)
+int* getPrimary(int n , double *temp)
 {
 	int j;
 	int num=0,s=0;
