@@ -1,9 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 void main()
 {
 	int i,j,s,n;
-	int result;
-	double **array,*temp;
+	int res;
+	double **array,*temp,**result;
 	
 	//temp
 	double t1[6]={1,1,1,1,1,0};
@@ -14,7 +15,7 @@ void main()
 	int homogeneous=1;//标识方程是否是齐次方程
 	void primaryRowChange(int s, int n, double **array);
 	void printfDoubleArray(int s, int n, double **array);
-	int homogeneousResolve(int s, int n, double **array);
+	int homogeneousResolve(int s, int n, double **array, double **result);
 
 	//void printfIntArray(int s, int n, int ** array);
 	//int* seekarray(int n,double *temp);
@@ -29,23 +30,23 @@ void main()
 	printf("-2 -4 5 10\n\n");
 	
 	//开始
-	/*printf("输入行数:");
+	printf("输入行数:");
 	scanf("%d",&s);
 	printf("输入列数:");
 	scanf("%d",&n);
-	*/
-	s=4;
-	n=6;
+	
 	//动态分配内存空间	
 	array =(double**)malloc(s*sizeof(double*));
+	result =(double**)malloc(s*sizeof(double*));
   	
 	for(i=0;i<s;i++)
 	{
 		temp=(double*)malloc(n*sizeof(double));
-		/*printf("请输入第%d行数组:",i+1);
+		printf("请输入第%d行数组:",i+1);
 		for(j=0;j<n;j++)
 			scanf("%lf",temp+j);
-		*/
+		
+		/*
 		switch(i)
 		{
 			case 0:
@@ -60,7 +61,7 @@ void main()
 			case 3:
 				temp=t4;//{5,4,3,2,6,0};
 				break;
-		}
+		}*/
 		array[i]=temp;
 	}
 	//打印数组
@@ -82,8 +83,22 @@ void main()
 
 	if(homogeneous)//齐次
 	{
-		result = homogeneousResolve(s,n,array);
+		res = homogeneousResolve(s,n,array,result);
+		switch (res)
+		{
+			case -1:
+				printf("方程无解");
+				break;
+			case 0:
+				printf("方程只有零解");
+				break;
+			default:
+				printf("方程的基础解系如下:\n");
+				printfDoubleArray(res,n-1,result);
+				break;
+		}
 	}
+	system("pause");
 }
 //初等行变换
 void primaryRowChange(int s, int n, double **array)
@@ -136,17 +151,19 @@ void primaryRowChange(int s, int n, double **array)
 }
 
 //齐次方程解的情况
-int homogeneousResolve(int s, int n, double **array)
+int homogeneousResolve(int s, int n, double **array, double **result)
 {
 	int i,j,k,l,o,p,flag;
 	int r=s;//秩rank
 	int m;//自由元个数
 	int f;//最后一个非零行首元的位置
-	int *temp = (double*)malloc(n*sizeof(double));//临时行指针
+	int sum1=0,sum2=0;
+	double *temp = (double*)malloc(n*sizeof(double));//临时行指针
 	int **resultArray;//存储矩阵首元位置及非零元个数
-	double **resultSolve;//存储基础解系
+	double **resultSolve;//计算基础解系
 	double undefined=-999;//标志位
 	int *freeElement;//自由元位置
+	double **resultTemp;
 	
 	void printfDoubleArray(int s, int n, double **array);
 	void printfIntArray(int s, int n, int **array);
@@ -179,7 +196,7 @@ int homogeneousResolve(int s, int n, double **array)
 
 	if(m<0)
 		return -1;//无解
-	else if(m=0)
+	else if(m==0)
 		return 0;//只有零解
 	else
 	{
@@ -225,7 +242,64 @@ int homogeneousResolve(int s, int n, double **array)
 		//打印自由元位置	
 		printf("%d,%d\n",freeElement[0],freeElement[1]);	
 		//计算基础解系
-		return 1;
+		//return 1;
+		for(k=0;k<m;k++)
+		{
+			resultTemp=(double**)malloc(r*sizeof(double*));
+			//复制数组
+			for(l=0;l<r;l++)
+			{
+				temp =(double*)malloc(n*sizeof(double));
+				for(o=0;o<n;o++)
+					*(temp+o)=*(*(resultSolve+l)+o);
+				resultTemp[l]=temp;
+			}
+
+			//设置自由为0或1
+			for(l=0;l<r;l++)
+			{
+				resultTemp[l][freeElement[k]]=1;//自由元为1
+				for(o=0;o<m;o++)
+				{
+					if(o!=k)
+						resultTemp[l][freeElement[o]]=0;//自由元为0
+				}
+
+			}
+			printfDoubleArray(r,n,resultTemp);
+
+			//计算
+			for(l=r-1;l>=0;l--)
+			{
+				for(o=resultArray[l][0];o<n;o++)
+				{
+					if(resultTemp[l][o]==undefined)//如果等于标志位，它可能是未知变量
+					{
+						sum1=sum2=0;
+						for(p=resultArray[l][0];p<n;p++)
+						{
+							if(p==n-1)
+							{
+								sum1=array[l][p]*resultTemp[l][p];
+							}
+							else if(p!=o)
+							{
+								sum2+=array[l][p]*resultTemp[l][p];
+							}
+						}
+
+						for(p=0;p<r;p++)
+							resultTemp[p][o]=(sum1-sum2)/array[l][o];
+
+						break;
+					}
+				}
+			}
+			result[k]=resultTemp[0];
+			printfDoubleArray(r,n,resultTemp);
+		}
+
+		return m;
 	}
 }
 
