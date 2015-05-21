@@ -7,6 +7,7 @@ void main()
 	int i,j,s,n;
 	int res;
 	double **array,*temp,**result;
+	double *special;//特解
 	
 	//temp
 	double t1[6]={1,1,1,1,1,0};
@@ -16,10 +17,12 @@ void main()
 
 	int homogeneous=1;//标识方程是否是齐次方程
 	void primaryRowChange(int s, int n, double **array);
-	void printfDoubleArray(int s, int n, double **array);
-	int homogeneousResolve(int s, int n, double **array, double **result);
+	void printfDouble1Dimension(int n, double *array);
+	void printfDouble2Dimension(int s, int n, double **array);
+	int homogeneousResolve(int s, int n, int homogeneous, double **array, double **result);
+	int nonHomegeneousResolve(int s, int n, double **array, double **result,double *special);
 
-	//void printfIntArray(int s, int n, int ** array);
+	//void printfInt2Dimension(int s, int n, int ** array);
 	//int* getPrimary(int n,double *temp);
 
 	//输入说明	
@@ -42,7 +45,8 @@ void main()
 	//动态分配内存空间	
 	array =(double**)malloc(s*sizeof(double*));
 	result =(double**)malloc(s*sizeof(double*));
-  	
+	special =(double*)malloc(n*sizeof(double));
+
 	for(i=0;i<s;i++)
 	{
 		temp=(double*)malloc(n*sizeof(double));
@@ -70,7 +74,7 @@ void main()
 	}
 	//打印数组
 	printf("初等行列变换之前:\n");
-	printfDoubleArray(s,n,array);	
+	printfDouble2Dimension(s,n,array);	
 	
 	//判断方程是否是齐次方程
 	for(i=0;i<s;i++)
@@ -83,26 +87,39 @@ void main()
 	}
 	primaryRowChange(s,n,array);	
 	printf("初等行列变换之后:\n");
-	printfDoubleArray(s,n,array);
+	printfDouble2Dimension(s,n,array);
 
 	if(homogeneous)//齐次
 	{
-		res = homogeneousResolve(s,n,array,result);
+		res = homogeneousResolve(s, n, homogeneous, array, result);
 		switch (res)
 		{
 			case -1:
-				printf("方程无解");
+				printf("方程无解.\n");
 				break;
 			case 0:
-				printf("方程只有零解");
+				printf("方程只有零解.\n");
 				break;
 			default:
 				printf("方程的基础解系如下:\n");
-				printfDoubleArray(res,n-1,result);
+				printfDouble2Dimension(res,n-1,result);
 				break;
 		}
 	}
-	//system("pause");
+	else//非齐次
+	{
+		res=nonHomegeneousResolve(s,n,array,result,special);
+		if(res==-1)
+			printf("方程无解.\n");
+		else
+		{
+			printf("方程的基础解系如下:\n");
+			printfDouble2Dimension(res,n-1,result);
+			printf("方程的特解如下:\n");
+			printfDouble1Dimension(n-1,special);
+		}
+	}
+	system("pause");
 }
 //初等行变换
 void primaryRowChange(int s, int n, double **array)
@@ -133,8 +150,7 @@ void primaryRowChange(int s, int n, double **array)
 			}		
 			//判断是交换成功，如果没有成功，则i--
 			if(!flag)
-			{
-				
+			{				
 				i--;
 				continue;
 			}
@@ -154,8 +170,31 @@ void primaryRowChange(int s, int n, double **array)
 	}
 }
 
+//非齐次方程解的情况
+int nonHomegeneousResolve(int s, int n, double **array, double **result, double *special)
+{
+	int i,j,k,l;
+	int r1,r2;//系数矩阵/增广矩阵的秩
+	double **temp ;//用来存储特解
+
+	int getRank(int s, int n, double **array);
+	int homogeneousResolve(int s, int n, int homogeneous, double **array, double **result);
+
+	r1=getRank(s,n-1,array);
+	r2=getRank(s,n,array);
+	if(r1!=r2)
+		return -1;//无解
+
+	//特解
+	temp =(double**)malloc(r1*sizeof(double*));
+	homogeneousResolve(r1,n,0,array,temp);
+	for(i=0;i<n;i++)
+		*(special+i)=*(*(temp)+i);
+
+	return homogeneousResolve(r1,n,1,array,result);
+}
 //齐次方程解的情况
-int homogeneousResolve(int s, int n, double **array, double **result)
+int homogeneousResolve(int s, int n, int homogeneous, double **array, double **result)
 {
 	int i,j,k,l,o,p,flag;
 	int r;//秩rank
@@ -169,13 +208,14 @@ int homogeneousResolve(int s, int n, double **array, double **result)
 	double **matrixTemp;
 	
 	//声明函数
-	void printfDoubleArray(int s, int n, double **array);
-	void printfIntArray(int s, int n, int **array);
+	void printfDouble2Dimension(int s, int n, double **array);
+	void printfInt2Dimension(int s, int n, int **array);
 	int** getPrimary(int s, int n, double **array);
 	int getRank(int s, int n, double **array);
 	double** initMatrixCalc(int s, int n);
 	int* getFreeElement(int r, int n, int **matrixPrimary, double **matrixCalc);
 	void printfInt1Dimension(int n, int *array);
+	void getPrimarySolution(int r, int n, int homogeneous, double **array, int **matrixPrimary, double **matrixCalc ,int *freeElement, double **result);
 
 	//秩rank
 	r = getRank(s,n,array);
@@ -193,98 +233,19 @@ int homogeneousResolve(int s, int n, double **array, double **result)
 		//获取矩阵首元信息
 		matrixPrimary = getPrimary(r,n,array);
 		
-		printf("打印计算矩阵:\n");
-		printfDoubleArray(r,n,matrixCalc);
+		/*printf("打印计算矩阵:\n");
+		printfDouble2Dimension(r,n,matrixCalc);
 		printf("打印矩阵首元信息:\n");
-		printfIntArray(r,2,matrixPrimary);
-		
-		/*
-		j=-1;//默认没有
-		for(k=r-1;k>=0;k--)//查找自由元，及位置为0的
-		{
-			if(matrixPrimary[k][1]==1)//说明第k行只有一个变量，它的解一定为0
-			{
-				j=matrixPrimary[k][0];
-				for(l=0;l<r;l++)
-					matrixCalc[l][j]=0;
-			}
-			else if(n-1-matrixPrimary[k][0]>m)
-			{
-				o=matrixPrimary[k][0];//当前行的首元位置
-				p=0;//次数
-				for(l=n-2;l>=o;l--)//从后向前查找自由元位置 ,共循环m次
-				{
-					if(l==j)
-						continue;
-					freeElement[p++]=l;
-					if(p==m)//说明已经找到 m个自由元
-						break;
-				}
-			}
-		}*/
-
+		printfInt2Dimension(r,2,matrixPrimary);
+		*/		
 		freeElement = getFreeElement(r,n,matrixPrimary,matrixCalc);
 		//打印自由元位置	
-		printf("打印自由元位置:\n");	
-		printfInt1Dimension(m, freeElement);
+		//printf("打印自由元位置:\n");	
+		//printfInt1Dimension(m, freeElement);
 	
 		//计算基础解系
-		for(k=0;k<m;k++)
-		{
-			matrixTemp=(double**)malloc(r*sizeof(double*));
-			//复制数组
-			for(l=0;l<r;l++)
-			{
-				temp =(double*)malloc(n*sizeof(double));
-				for(o=0;o<n;o++)
-					*(temp+o)=*(*(matrixCalc+l)+o);
-				matrixTemp[l]=temp;
-			}
-
-			//设置自由为0或1
-			for(l=0;l<r;l++)
-			{
-				matrixTemp[l][freeElement[k]]=1;//自由元为1
-				for(o=0;o<m;o++)
-				{
-					if(o!=k)
-						matrixTemp[l][freeElement[o]]=0;//自由元为0
-				}
-
-			}
-			printfDoubleArray(r,n,matrixTemp);
-
-			//计算
-			for(l=r-1;l>=0;l--)
-			{
-				for(o=matrixPrimary[l][0];o<n;o++)
-				{
-					if(matrixTemp[l][o]==undefined)//如果等于标志位，它可能是未知变量
-					{
-						sum1=sum2=0;
-						for(p=matrixPrimary[l][0];p<n;p++)
-						{
-							if(p==n-1)
-							{
-								sum1=array[l][p]*matrixTemp[l][p];
-							}
-							else if(p!=o)
-							{
-								sum2+=array[l][p]*matrixTemp[l][p];
-							}
-						}
-
-						for(p=0;p<r;p++)
-							matrixTemp[p][o]=(sum1-sum2)/array[l][o];
-
-						break;
-					}
-				}
-			}
-			result[k]=matrixTemp[0];
-			printfDoubleArray(r,n,matrixTemp);
-		}
-
+		getPrimarySolution(r, n, homogeneous, array, matrixPrimary, matrixCalc, freeElement ,result);
+		//printfDouble2Dimension(m,n,result);
 		return m;
 	}
 }
@@ -398,8 +359,76 @@ int* getFreeElement(int r, int n, int **matrixPrimary, double **matrixCalc)
 	return freeElement;
 }
 
+//计算基础解系
+void getPrimarySolution(int r, int n, int homogeneous, double **array, int **matrixPrimary, double **matrixCalc ,int *freeElement, double **result)
+{
+	int i,j,k,l,p;
+	int m=n-1-r;//自由元
+	double sum1,sum2;
+	double *temp,**matrixTemp;
+
+	//计算基础解系
+	for(i=0;i<m;i++)
+	{
+		matrixTemp=(double**)malloc(r*sizeof(double*));
+		//复制数组
+		for(j=0;j<r;j++)
+		{
+			temp =(double*)malloc(n*sizeof(double));
+			for(k=0;k<n;k++)
+				*(temp+k)=*(*(matrixCalc+j)+k);
+			matrixTemp[j]=temp;
+		}
+
+		//设置自由元为0或1
+		for(j=0;j<r;j++)
+		{
+			*(*(matrixTemp+j)+freeElement[i])=1;//自由元为1
+			for(k=0;k<m;k++)
+			{
+				if(k!=i)
+					*(*(matrixTemp+j)+freeElement[k])=0;//自由元为0
+			}
+
+		}
+		//printfDouble2Dimension(r,n,matrixTemp);
+
+		//计算
+		for(j=r-1;j>=0;j--)
+		{
+			p=*(*(matrixPrimary+j));//当前行起始位置
+			for(k=p;k<n;k++)
+			{
+				if(*(*(matrixTemp+j)+k)==undefined)//如果等于标志位，它可能是未知变量
+				{
+					sum1=sum2=0;
+					for(l=p;l<n;l++)
+					{
+						if(l==n-1)
+						{
+							sum1=*(*(array+j)+l) * *(*(matrixTemp+j)+l);
+						}
+						else if(l!=k)
+						{
+							sum2+=*(*(array+j)+l) * *(*(matrixTemp+j)+l);
+						}
+					}
+
+					for(l=0;l<r;l++)
+						*(*(matrixTemp+l)+k)=((homogeneous?0:sum1)-sum2)/ *(*(array+j)+k);//如果齐次sum1=0;
+
+					//break;
+				}
+			}
+		}
+		result[i]=matrixTemp[0];
+		//printfDouble2Dimension(r,n,matrixTemp);
+	}
+}
+
+
 //打印数组
-void printfDoubleArray(int s, int n, double **array)
+void printfDouble2Dimension(int s, int n, double **array)
 {
 	//printf("%d,%d",s,n);
 	int i,j;
@@ -412,8 +441,17 @@ void printfDoubleArray(int s, int n, double **array)
 		printf("\n");
 	}
 }
+void printfDouble1Dimension(int n, double *array)
+{
+	int i;
+	for(i=0;i<n;i++)
+	{
+		printf("%6.2lf",*(array+i));	
+	}
+	printf("\n");
+}
 //打印二维数组
-void printfIntArray(int s, int n, int **array)
+void printfInt2Dimension(int s, int n, int **array)
 {
 	int i,j;
 	for(i=0;i<s;i++)
