@@ -213,7 +213,7 @@ int homogeneousResolve(int s, int n, int homogeneous, double **array, double **r
 	int** getPrimary(int s, int n, double **array);
 	int getRank(int s, int n, double **array);
 	double** initMatrixCalc(int s, int n);
-	int* getFreeElement(int r, int n, int **matrixPrimary, double **matrixCalc);
+	int* getFreeElement(int r, int n,double **array, int **matrixPrimary, double **matrixCalc);
 	void printfInt1Dimension(int n, int *array);
 	void getPrimarySolution(int r, int n, int homogeneous, double **array, int **matrixPrimary, double **matrixCalc ,int *freeElement, double **result);
 
@@ -238,7 +238,7 @@ int homogeneousResolve(int s, int n, int homogeneous, double **array, double **r
 		printf("打印矩阵首元信息:\n");
 		printfInt2Dimension(r,2,matrixPrimary);
 		*/		
-		freeElement = getFreeElement(r,n,matrixPrimary,matrixCalc);
+		freeElement = getFreeElement(r, n, array, matrixPrimary,matrixCalc);
 		//打印自由元位置	
 		//printf("打印自由元位置:\n");	
 		//printfInt1Dimension(m, freeElement);
@@ -323,7 +323,7 @@ int** getPrimary(int s, int n, double **array)
 }
 
 //获取自由元信息
-int* getFreeElement(int r, int n, int **matrixPrimary, double **matrixCalc)
+int* getFreeElement(int r, int n, double **array, int **matrixPrimary, double **matrixCalc)
 {
 	int i,j,k,o,p,q;
 	int m=n-1-r;//n-1:
@@ -332,11 +332,11 @@ int* getFreeElement(int r, int n, int **matrixPrimary, double **matrixCalc)
 	q=0;//如果当前行非零个数与自由元个数相等，则标记为1,自由元选择起始位置左移一位
 	for(i=r-1;i>=0;i--)//查找自由元，及位置为0的
 	{
-		if(matrixPrimary[i][1]==1)//说明第i行只有一个变量，它的解一定为0
+		if(*(*(matrixPrimary+i)+1)==1)//说明第i行只有一个变量，如果是齐次方程它的解一定为0
 		{
-			j=matrixPrimary[i][0];
+			j=*(*(matrixPrimary+i)+0);
 			for(k=0;k<r;k++)
-				matrixCalc[k][j]=0;
+				*(*(matrixCalc+k)+j)=*(*(array+k)+n-1) / *(*(array+k)+j);
 		}
 		else if(n-1-matrixPrimary[i][0]==m)
 		{
