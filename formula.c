@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 
 double undefined=-999;//标志位
@@ -279,7 +279,7 @@ int getRank(int s, int n, double **array)
 		flag=0;
 		for(j=0;j<n;j++)
 		{
-			if(*(*(array+i)+j)!=0)
+			if(*(*(array+i)+j)!=0 && (*(*(array+i)+j)>0.01 || *(*(array+i)+j) <-0.01))//排除很小数，
 			{
 				flag=1;
 				break;		
